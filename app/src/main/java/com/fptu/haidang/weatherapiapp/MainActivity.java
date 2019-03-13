@@ -141,7 +141,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void onChangeButtonClicked(View view) {
         Intent intent = new Intent(MainActivity.this, Main2Activity.class);
-        String city = editTextName.getText().toString();
+        String city = (txtCity.getText().toString()).substring(0, txtCity.getText().toString().length()-1);
+        System.out.println(city);
         intent.putExtra("name", city);
         startActivity(intent);
     }
