@@ -168,7 +168,8 @@ public class MainActivity extends AppCompatActivity {
                                     icon = jsonObjectWeather.getString("icon");
                                     weathers.add(new Weather(xDay, status, icon, xMinTemp, xMaxTemp));
                                     Log.d("weathers", String.valueOf(weathers));
-                                }                            }
+                                }
+                            }
 
                             /*Log.d("listObj", String.valueOf(listObj));
                             System.out.println(String.valueOf(listObj));*/
@@ -217,7 +218,11 @@ public class MainActivity extends AppCompatActivity {
         switch (requestCode) {
             case 1: {
                 if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(MainActivity.this, "Permission denied!", Toast.LENGTH_SHORT).show();
                 } else {
+                    Toast.makeText(MainActivity.this, "Permission granted!", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(this, MainActivity.class);
+                    startActivity(intent);
                 }
                 return;
             }
