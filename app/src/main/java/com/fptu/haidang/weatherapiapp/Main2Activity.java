@@ -122,4 +122,6 @@ public class Main2Activity extends AppCompatActivity {
         formattedDate = simpleDateFormat.format(date);
         return formattedDate;
     }
+
+
 }

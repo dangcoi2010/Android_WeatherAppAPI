@@ -1,18 +1,15 @@
 package com.fptu.haidang.weatherapiapp;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.location.Location;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,9 +19,6 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.squareup.picasso.Picasso;
 
 import org.json.JSONArray;
@@ -46,67 +40,31 @@ public class MainActivity extends AppCompatActivity {
     private EditText editTextName;
     private ImageView imgIcon;
     private Button btnSearch, btnNextDays;
-    private FusedLocationProviderClient fusedLocationClient;
 
-    String preferentCity = "";
+    private String preferentCity = "";
+    private ImageView imgBack;
+    private TextView txtName;
+    private ListView listView;
+    private CustomAdapter customAdapter;
+    private ArrayList<Weather> weathers;
 
-    private String[] ACCESS_FINE_LOCATION = {"ACCESS_FINE_LOCATION"};
 
-    @SuppressLint("MissingPermission")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         matchingViews();
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)) {
-                // Show an explanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-            } else {
-                // No explanation needed; request the permission
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-
-                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-                // app-defined int constant. The callback method gets the
-                // result of the request.
-            }
-        } else {
-            fusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                @Override
-                public void onSuccess(Location location) {
-                    // Got last known location. In some rare situations this can be null.
-                    if (location != null) {
-                        // Logic to handle location object
-                    }
-                }
-            });
-            getCurrentWeatherData("Hanoi");
-        }
+        getCurrentWeatherData("Hanoi");
+        getNextSevenDaysWeatherData("Hanoi");
+        getWindow().setSoftInputMode(WindowManager.
+                LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        switch (requestCode) {
-            case 1: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay! Do the
-                    // contacts-related task you need to do.
-                } else {
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                }
-                return;
-            }
-
-            // other 'case' lines to check for other
-            // permissions this app might request.
-        }
+    protected void onResume() {
+        super.onResume();
+        getWindow().setSoftInputMode(WindowManager.
+                LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
     private void matchingViews() {
@@ -121,7 +79,11 @@ public class MainActivity extends AppCompatActivity {
         imgIcon = findViewById(R.id.imgIcon);
         editTextName = findViewById(R.id.editTextName);
         btnSearch = findViewById(R.id.btnSearch);
-        btnNextDays = findViewById(R.id.btnNextDays);
+//        btnNextDays = findViewById(R.id.btnNextDays);
+        listView = findViewById(R.id.listView);
+        weathers = new ArrayList<>();
+        customAdapter = new CustomAdapter(MainActivity.this, weathers);
+        listView.setAdapter(customAdapter);
     }
 
     public void getCurrentWeatherData(String data) {
@@ -199,11 +161,73 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void onChangeButtonClicked(View view) {
+    private void getNextSevenDaysWeatherData(String data) {
+        RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
+        String url = "http://api.openweathermap.org/data/2.5/forecast?q=" + data + "&units=metric&cnt=7&lang=en&appid=52c04af94a0abb87659b087533d7fdfa";
+        StringRequest request = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d("ketqua", response);
+                        try {
+                            JSONObject jsonObject = new JSONObject(response);
+                            JSONObject jsonObjectCity = jsonObject.getJSONObject("city");
+//                            String city = jsonObjectCity.getString("name");
+//                            txtName.setText(city);
+
+                            JSONArray jsonArray = jsonObject.getJSONArray("list");
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject object = jsonArray.getJSONObject(i);
+                                String day = object.getString("dt");
+
+                                long l = Long.valueOf(day);
+                                Date date = new Date(l * 1000L);
+
+                                String xDay = parseDate2(date);
+
+                                JSONObject jsonObjectTemp = object.getJSONObject("main");
+
+                                String minTemp = jsonObjectTemp.getString("temp_min");
+                                String maxTemp = jsonObjectTemp.getString("temp_max");
+
+                                Double longMin = Double.valueOf(minTemp);
+                                String xMinTemp = String.valueOf(longMin.intValue());
+                                Double longMax = Double.valueOf(maxTemp);
+                                String xMaxTemp = String.valueOf(longMax.intValue());
+
+                                JSONArray jsonArrayWeather = object.getJSONArray("weather");
+                                JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
+                                String status = jsonObjectWeather.getString("main");
+                                String icon = jsonObjectWeather.getString("icon");
+                                weathers.add(new Weather(xDay, status, icon, xMinTemp, xMaxTemp));
+
+                            }
+                            customAdapter.notifyDataSetChanged();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.d("loi", "Loi hien thi: " + error);
+            }
+        });
+        requestQueue.add(request);
+    }
+
+    public String parseDate2(Date date) {
+        String formattedDate = "";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEEE yyyy-MM-dd");
+        formattedDate = simpleDateFormat.format(date);
+        return formattedDate;
+    }
+
+    /*public void onChangeButtonClicked(View view) {
         Intent intent = new Intent(MainActivity.this, Main2Activity.class);
         String city = (txtCity.getText().toString()).substring(0, txtCity.getText().toString().length() - 1);
         System.out.println(city);
         intent.putExtra("name", city);
         startActivity(intent);
-    }
+    }*/
 }
