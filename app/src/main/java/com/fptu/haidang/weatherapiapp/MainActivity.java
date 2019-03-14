@@ -1,5 +1,6 @@
 package com.fptu.haidang.weatherapiapp;
 
+
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -34,6 +35,7 @@ import org.json.JSONObject;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -57,8 +59,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void getCurrentWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
-        String url = "https://api.openweathermap.org/data/2.5/weather?q=" + data + "&units=metric&appid=52c04af94a0abb87659b087533d7fdfa";
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+        API api = new API();
+//        String url = "https://api.openweathermap.org/data/2.5/weather?q=" + data + "&units=metric&appid=52c04af94a0abb87659b087533d7fdfa";
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, api.getCURRENT_TEMP() + data + api.getCURRENT_TEMP_C() + api.getAPI_KEY(),
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
@@ -115,14 +118,22 @@ public class MainActivity extends AppCompatActivity {
         requestQueue.add(stringRequest);
     }
 
-    private void getNextSevenDaysWeatherData(String data) {
+    private void getNextFiveDaysWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
-        String url = "http://api.openweathermap.org/data/2.5/forecast?q=" + data + "&units=metric&cnt=7&lang=en&appid=52c04af94a0abb87659b087533d7fdfa";
+
+        String url = "http://api.openweathermap.org/data/2.5/forecast?q=" + data + ",vn&units=metric&lang=en&appid=52c04af94a0abb87659b087533d7fdfa";
         StringRequest request = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
                         Log.d("ketqua", response);
+                        String maxTemp = "";
+                        String minTemp = "";
+                        String xMinTemp = "";
+                        String xMaxTemp = "";
+                        String status = "";
+                        String icon = "";
+                        String xDay = "";
                         try {
                             JSONObject jsonObject = new JSONObject(response);
                             JSONObject jsonObjectCity = jsonObject.getJSONObject("city");
@@ -133,29 +144,34 @@ public class MainActivity extends AppCompatActivity {
                             for (int i = 0; i < jsonArray.length(); i++) {
                                 JSONObject object = jsonArray.getJSONObject(i);
                                 String day = object.getString("dt");
-
+                                String dayTime = object.getString("dt_txt");
                                 long l = Long.valueOf(day);
                                 Date date = new Date(l * 1000L);
 
-                                String xDay = parseDate2(date);
 
+                                System.out.println(dayTime);
                                 JSONObject jsonObjectTemp = object.getJSONObject("main");
 
-                                String minTemp = jsonObjectTemp.getString("temp_min");
-                                String maxTemp = jsonObjectTemp.getString("temp_max");
+                                if (dayTime.substring(11).equals("00:00:00")) {
+                                    xDay = parseDate2(date);
+                                    minTemp = jsonObjectTemp.getString("temp_min");
+                                    Double longMin = Double.valueOf(minTemp);
+                                    xMinTemp = String.valueOf(longMin.intValue());
+                                }
+                                if (dayTime.substring(11).equals("12:00:00")) {
+                                    maxTemp = jsonObjectTemp.getString("temp_min");
+                                    Double longMax = Double.valueOf(maxTemp);
+                                    xMaxTemp = String.valueOf(longMax.intValue());
+                                    JSONArray jsonArrayWeather = object.getJSONArray("weather");
+                                    JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
+                                    status = jsonObjectWeather.getString("main");
+                                    icon = jsonObjectWeather.getString("icon");
+                                    weathers.add(new Weather(xDay, status, icon, xMinTemp, xMaxTemp));
+                                    Log.d("weathers", String.valueOf(weathers));
+                                }                            }
 
-                                Double longMin = Double.valueOf(minTemp);
-                                String xMinTemp = String.valueOf(longMin.intValue());
-                                Double longMax = Double.valueOf(maxTemp);
-                                String xMaxTemp = String.valueOf(longMax.intValue());
-
-                                JSONArray jsonArrayWeather = object.getJSONArray("weather");
-                                JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
-                                String status = jsonObjectWeather.getString("main");
-                                String icon = jsonObjectWeather.getString("icon");
-                                weathers.add(new Weather(xDay, status, icon, xMinTemp, xMaxTemp));
-
-                            }
+                            /*Log.d("listObj", String.valueOf(listObj));
+                            System.out.println(String.valueOf(listObj));*/
                             customAdapter.notifyDataSetChanged();
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -212,7 +228,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
         int permission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
         if (permission != PackageManager.PERMISSION_GRANTED) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
@@ -220,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
                 AlertDialog.Builder builder =
                         new AlertDialog.Builder(this);
                 builder.setMessage("Permission to access the location is required for this app.").setTitle("Permission required");
-                builder.setPositiveButton("OK",new DialogInterface.OnClickListener() {
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         requestPermission();
                     }
@@ -231,15 +246,15 @@ public class MainActivity extends AppCompatActivity {
                 requestPermission();
             }
         } else {
+            setContentView(R.layout.activity_main);
             matchingViews();
             getCurrentWeatherData("Hanoi");
             String city = (txtCity.getText().toString()).substring(0, txtCity.getText().toString().length() - 1);
             Log.d("onCreate", city);
-            getNextSevenDaysWeatherData(city);
+            getNextFiveDaysWeatherData(city);
             getWindow().setSoftInputMode(WindowManager.
                     LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         }
-
     }
 
     @Override
@@ -257,10 +272,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onSearchButtonClicked(View view) {
+        weathers.clear();
         String city = editTextName.getText().toString();
         preferentCity = (city.equals("") ? "Hanoi" : city);
         getCurrentWeatherData(city);
-        getNextSevenDaysWeatherData(city);
+        getNextFiveDaysWeatherData(city);
     }
 
 
