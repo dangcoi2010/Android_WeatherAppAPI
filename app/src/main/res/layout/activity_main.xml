@@ -287,8 +287,8 @@
                 android:id="@+id/listView"
                 android:layout_width="match_parent"
                 android:layout_height="900dp"
-                tools:layout_editor_absoluteY="640dp"
-                android:layout_marginTop="20dp"></ListView>
+                android:layout_marginTop="20dp"
+                tools:layout_editor_absoluteY="640dp"></ListView>
         </LinearLayout>
 
     </ScrollView>

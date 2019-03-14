@@ -1,6 +1,12 @@
 package com.fptu.haidang.weatherapiapp;
 
+import android.Manifest;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -48,43 +54,6 @@ public class MainActivity extends AppCompatActivity {
     private CustomAdapter customAdapter;
     private ArrayList<Weather> weathers;
 
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        matchingViews();
-        getCurrentWeatherData("Hanoi");
-        getNextSevenDaysWeatherData("Hanoi");
-        getWindow().setSoftInputMode(WindowManager.
-                LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        getWindow().setSoftInputMode(WindowManager.
-                LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-    }
-
-    private void matchingViews() {
-        txtCity = findViewById(R.id.txtCityName);
-        txtCountry = findViewById(R.id.txtCountry);
-        txtTemperature = findViewById(R.id.txtTemperature);
-        txtStatus = findViewById(R.id.txtStatus);
-        txtHumidity = findViewById(R.id.txtHumidity);
-        txtCloudy = findViewById(R.id.txtCloudy);
-        txtWindy = findViewById(R.id.txtWindy);
-        txtCurrentTime = findViewById(R.id.txtCurrentTime);
-        imgIcon = findViewById(R.id.imgIcon);
-        editTextName = findViewById(R.id.editTextName);
-        btnSearch = findViewById(R.id.btnSearch);
-//        btnNextDays = findViewById(R.id.btnNextDays);
-        listView = findViewById(R.id.listView);
-        weathers = new ArrayList<>();
-        customAdapter = new CustomAdapter(MainActivity.this, weathers);
-        listView.setAdapter(customAdapter);
-    }
 
     public void getCurrentWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
@@ -146,21 +115,6 @@ public class MainActivity extends AppCompatActivity {
         requestQueue.add(stringRequest);
     }
 
-
-    public String parseDate(Date date) {
-        String formattedDate = "";
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEEE yyyy-MM-dd HH:mm:ss");
-        formattedDate = simpleDateFormat.format(date);
-        return formattedDate;
-    }
-
-    public void onSearchButtonClicked(View view) {
-        String city = editTextName.getText().toString();
-        preferentCity = (city.equals("") ? "Hanoi" : city);
-        getCurrentWeatherData(city);
-
-    }
-
     private void getNextSevenDaysWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
         String url = "http://api.openweathermap.org/data/2.5/forecast?q=" + data + "&units=metric&cnt=7&lang=en&appid=52c04af94a0abb87659b087533d7fdfa";
@@ -216,6 +170,100 @@ public class MainActivity extends AppCompatActivity {
         requestQueue.add(request);
     }
 
+    private void matchingViews() {
+        txtCity = findViewById(R.id.txtCityName);
+        txtCountry = findViewById(R.id.txtCountry);
+        txtTemperature = findViewById(R.id.txtTemperature);
+        txtStatus = findViewById(R.id.txtStatus);
+        txtHumidity = findViewById(R.id.txtHumidity);
+        txtCloudy = findViewById(R.id.txtCloudy);
+        txtWindy = findViewById(R.id.txtWindy);
+        txtCurrentTime = findViewById(R.id.txtCurrentTime);
+        imgIcon = findViewById(R.id.imgIcon);
+        editTextName = findViewById(R.id.editTextName);
+        btnSearch = findViewById(R.id.btnSearch);
+        listView = findViewById(R.id.listView);
+        weathers = new ArrayList<>();
+        customAdapter = new CustomAdapter(MainActivity.this, weathers);
+        listView.setAdapter(customAdapter);
+    }
+
+
+    private void requestPermission() {
+        String[] PERMISSIONS = {
+                Manifest.permission.ACCESS_FINE_LOCATION
+        };
+        ActivityCompat.requestPermissions(this, PERMISSIONS, 1);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 1: {
+                if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                } else {
+                }
+                return;
+            }
+        }
+    }
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        int permission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)) {
+                AlertDialog.Builder builder =
+                        new AlertDialog.Builder(this);
+                builder.setMessage("Permission to access the location is required for this app.").setTitle("Permission required");
+                builder.setPositiveButton("OK",new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        requestPermission();
+                    }
+                });
+                AlertDialog dialog = builder.create();
+                dialog.show();
+            } else {
+                requestPermission();
+            }
+        } else {
+            matchingViews();
+            getCurrentWeatherData("Hanoi");
+            String city = (txtCity.getText().toString()).substring(0, txtCity.getText().toString().length() - 1);
+            Log.d("onCreate", city);
+            getNextSevenDaysWeatherData(city);
+            getWindow().setSoftInputMode(WindowManager.
+                    LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        }
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        getWindow().setSoftInputMode(WindowManager.
+                LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+    }
+
+    public String parseDate(Date date) {
+        String formattedDate = "";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEEE yyyy-MM-dd HH:mm:ss");
+        formattedDate = simpleDateFormat.format(date);
+        return formattedDate;
+    }
+
+    public void onSearchButtonClicked(View view) {
+        String city = editTextName.getText().toString();
+        preferentCity = (city.equals("") ? "Hanoi" : city);
+        getCurrentWeatherData(city);
+        getNextSevenDaysWeatherData(city);
+    }
+
+
     public String parseDate2(Date date) {
         String formattedDate = "";
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEEE yyyy-MM-dd");
@@ -223,11 +271,4 @@ public class MainActivity extends AppCompatActivity {
         return formattedDate;
     }
 
-    /*public void onChangeButtonClicked(View view) {
-        Intent intent = new Intent(MainActivity.this, Main2Activity.class);
-        String city = (txtCity.getText().toString()).substring(0, txtCity.getText().toString().length() - 1);
-        System.out.println(city);
-        intent.putExtra("name", city);
-        startActivity(intent);
-    }*/
 }
