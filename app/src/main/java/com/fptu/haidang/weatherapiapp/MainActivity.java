@@ -8,11 +8,13 @@ import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.os.Bundle;
+import android.os.Handler;
+import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -41,9 +43,11 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,15 +59,58 @@ public class MainActivity extends AppCompatActivity {
     private TextView txtCurrentTime;
     private EditText editTextName;
     private ImageView imgIcon;
-    private Button btnSearch, btnNextDays;
-
-    private String preferentCity = "";
-    private ImageView imgBack;
-    private TextView txtName;
     private ListView listView;
     private CustomAdapter customAdapter;
     private ArrayList<Weather> weathers;
+    private Button btnSearch;
+    private String preferentCity = "";
 
+    private static int[] background = new int[]{
+            R.drawable.clear_day,
+            R.drawable.clear_day_2,
+            R.drawable.clear_day_3,
+            R.drawable.clear_day_4,
+            R.drawable.clear_night,
+            R.drawable.clear_night_2,
+            R.drawable.clear_night_3,
+            R.drawable.clear_night_4,
+            R.drawable.cloudy_day,
+            R.drawable.cloudy_day_2,
+            R.drawable.cloudy_day_3,
+            R.drawable.cloudy_day_4,
+            R.drawable.cloudy_day_5,
+            R.drawable.cloudy_day_6,
+            R.drawable.mist_day,
+            R.drawable.mist_day_2,
+            R.drawable.mist_day_3,
+            R.drawable.rain,
+            R.drawable.rain_2,
+            R.drawable.rain_3,
+            R.drawable.rain_4,
+            R.drawable.snow_day,
+            R.drawable.snow_day_2,
+            R.drawable.snow_day_3,
+            R.drawable.thunder_day,
+            R.drawable.thunder_day_2,
+            R.drawable.thunder_day_3,
+            R.drawable.thunder_night,
+            R.drawable.thunder_night_2};
+    private int statusId;
+
+    private java.util.Date dateNow = new java.util.Date();
+    private String hourNow = dateNow.toString().substring(11, 13);
+
+    int[] clearDay = Arrays.copyOfRange(background, 0, background.length - 25);
+    int[] clearNight = Arrays.copyOfRange(background, background.length - 25, background.length - 21);
+    int[] cloudyDay = Arrays.copyOfRange(background, background.length - 21, background.length - 15);
+    int[] mist = Arrays.copyOfRange(background, background.length - 15, background.length - 12);
+    int[] rain = Arrays.copyOfRange(background, background.length - 12, background.length - 8);
+    int[] snowDay = Arrays.copyOfRange(background, background.length - 8, background.length - 5);
+    int[] thunderDay = Arrays.copyOfRange(background, background.length - 5, background.length - 2);
+    int[] thunderNight = Arrays.copyOfRange(background, background.length - 2, background.length);
+
+    private Handler imageHandler = new Handler();
+    // imageHandler.post(handle);
 
     public void getCurrentWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
@@ -86,6 +133,8 @@ public class MainActivity extends AppCompatActivity {
                             JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
 
                             String status = jsonObjectWeather.getString("main");
+                            statusId = jsonObjectWeather.getInt("id");
+                            backgroundCollection(statusId);
                             String icon = jsonObjectWeather.getString("icon");
                             txtStatus.setText(status);
                             Picasso.get().load("http://openweathermap.org/img/w/" + icon + ".png").into(imgIcon);
@@ -157,7 +206,6 @@ public class MainActivity extends AppCompatActivity {
                                 Date date = new Date(l * 1000L);
 
 
-                                System.out.println(dayTime);
                                 JSONObject jsonObjectTemp = object.getJSONObject("main");
 
                                 long millis = System.currentTimeMillis();
@@ -201,8 +249,6 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
 
-                            /*Log.d("listObj", String.valueOf(listObj));
-                            System.out.println(String.valueOf(listObj));*/
                             customAdapter.notifyDataSetChanged();
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -216,6 +262,113 @@ public class MainActivity extends AppCompatActivity {
         });
         requestQueue.add(request);
     }
+
+    /*private final Runnable handle = new Runnable() {
+        public void run() {
+            try {
+                Random r = new Random();
+                int i = r.nextInt(mist.length);
+                MainActivity.this.getWindow().setBackgroundDrawableResource(mist[i]);
+                imageHandler.postDelayed(this, 5000);
+            } catch (Exception e) {
+                Log.d("Test", e.toString());
+            }
+        }
+    };*/
+
+    public void randomBackground(int[] weather) {
+        System.out.println("chay randomBackground");
+        Random r = new Random();
+        int i = r.nextInt(weather.length);
+        MainActivity.this.getWindow().setBackgroundDrawableResource(weather[i]);
+    }
+
+    private void backgroundCollection(int status) {
+        switch (status) {
+            // Thunderstorm
+            case (200):
+            case (201):
+            case (202):
+            case (210):
+            case (211):
+            case (212):
+            case (221):
+            case (230):
+            case (231):
+            case (232):
+                if (Integer.parseInt(hourNow) <= 19) {
+                    randomBackground(thunderDay);
+                } else randomBackground(thunderNight);
+                    break;
+                // Mist/Drizzle
+            case (300):
+            case (301):
+            case (302):
+            case (310):
+            case (311):
+            case (312):
+            case (313):
+            case (314):
+            case (321):
+                randomBackground(mist);
+                break;
+            // Rain
+            case (500):
+            case (501):
+            case (502):
+            case (503):
+            case (504):
+            case (511):
+            case (520):
+            case (521):
+            case (522):
+            case (531):
+                randomBackground(rain);
+                break;
+            // Snow
+            case (600):
+            case (601):
+            case (602):
+            case (611):
+            case (612):
+            case (613):
+            case (615):
+            case (616):
+            case (620):
+            case (621):
+            case (622):
+                randomBackground(snowDay);
+                break;
+            // Atmosphere
+            case (701):
+            case (711):
+            case (721):
+            case (731):
+            case (741):
+            case (751):
+            case (761):
+            case (762):
+            case (771):
+            case (781):
+                break;
+            // Clear
+            case (800):
+                if (Integer.parseInt(hourNow) <= 19) {
+                    randomBackground(clearDay);
+                } else randomBackground(clearNight);
+                    break;
+                // Cloudy
+            case (801):
+            case (802):
+            case (803):
+            case (804):
+                randomBackground(cloudyDay);
+//                imageHandler.post(handle);
+                System.out.println("vao day");
+                break;
+        }
+    }
+
 
     private void matchingViews() {
         txtCity = findViewById(R.id.txtCityName);
@@ -311,7 +464,6 @@ public class MainActivity extends AppCompatActivity {
                         public void onSuccess(Location location) {
                             // Got last known location. In some rare situations this can be null.
                             if (location != null) {
-                                System.out.println(location.toString());
                                 latitude = location.getLatitude();
                                 longitude = location.getLongitude();
                                 getAddress(latitude, longitude);
