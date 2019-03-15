@@ -5,6 +5,9 @@ import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
@@ -26,16 +29,21 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.squareup.picasso.Picasso;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -60,7 +68,6 @@ public class MainActivity extends AppCompatActivity {
     public void getCurrentWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
         API api = new API();
-//        String url = "https://api.openweathermap.org/data/2.5/weather?q=" + data + "&units=metric&appid=52c04af94a0abb87659b087533d7fdfa";
         StringRequest stringRequest = new StringRequest(Request.Method.GET, api.getCURRENT_TEMP() + data + api.getCURRENT_TEMP_C() + api.getAPI_KEY(),
                 new Response.Listener<String>() {
                     @Override
@@ -121,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
     private void getNextFiveDaysWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
 
-        String url = "http://api.openweathermap.org/data/2.5/forecast?q=" + data + ",vn&units=metric&lang=en&appid=52c04af94a0abb87659b087533d7fdfa";
+        String url = "http://api.openweathermap.org/data/2.5/forecast?q=" + data + "&units=metric&lang=en&appid=52c04af94a0abb87659b087533d7fdfa";
         StringRequest request = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
@@ -136,7 +143,8 @@ public class MainActivity extends AppCompatActivity {
                         String xDay = "";
                         try {
                             JSONObject jsonObject = new JSONObject(response);
-                            JSONObject jsonObjectCity = jsonObject.getJSONObject("city");
+
+//                            JSONObject jsonObjectCity = jsonObject.getJSONObject("city");
 //                            String city = jsonObjectCity.getString("name");
 //                            txtName.setText(city);
 
@@ -229,10 +237,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private FusedLocationProviderClient fusedLocationClient;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public String getAddress(double lat, double lng) {
+        String currentLocation = "";
+
+        Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.ENGLISH);
+        try {
+            List<Address> addresses = geocoder.getFromLocation(lat, lng, 1);
+            Address obj = addresses.get(0);
+            String add = "";
+            add = obj.getAdminArea() + "," +obj.getCountryCode();
+
+            Log.v("IGA", "Address" + add);
+            return add;
+
+        } catch (IOException e) {
+            System.out.println(e);
+            return "";
+        }
+    }
+
+    protected void getLocation() {
         int permission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
         if (permission != PackageManager.PERMISSION_GRANTED) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
@@ -253,20 +279,39 @@ public class MainActivity extends AppCompatActivity {
         } else {
             setContentView(R.layout.activity_main);
             matchingViews();
-            getCurrentWeatherData("Hanoi");
-            String city = (txtCity.getText().toString()).substring(0, txtCity.getText().toString().length() - 1);
-            Log.d("onCreate", city);
-            getNextFiveDaysWeatherData(city);
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        double latitude;
+                        double longitude;
+                        @Override
+                        public void onSuccess(Location location) {
+                            // Got last known location. In some rare situations this can be null.
+                            if (location != null) {
+                                System.out.println(location.toString());
+                                latitude = location.getLatitude();
+                                longitude = location.getLongitude();
+                                getAddress(latitude, longitude);
+                                String city = getAddress(latitude, longitude).substring( 0, getAddress(latitude, longitude).indexOf(","));
+                                getCurrentWeatherData(city);
+                                getNextFiveDaysWeatherData(getAddress(latitude, longitude));
+                            }
+                        }
+                    });
             getWindow().setSoftInputMode(WindowManager.
                     LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         }
     }
 
     @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getLocation();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
-        getWindow().setSoftInputMode(WindowManager.
-                LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
     public String parseDate(Date date) {
