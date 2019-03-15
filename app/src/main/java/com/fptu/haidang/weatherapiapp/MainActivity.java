@@ -160,22 +160,44 @@ public class MainActivity extends AppCompatActivity {
                                 System.out.println(dayTime);
                                 JSONObject jsonObjectTemp = object.getJSONObject("main");
 
-                                if (dayTime.substring(11).equals("00:00:00")) {
-                                    xDay = parseDate2(date);
-                                    minTemp = jsonObjectTemp.getString("temp_min");
-                                    Double longMin = Double.valueOf(minTemp);
-                                    xMinTemp = String.valueOf(longMin.intValue());
-                                }
-                                if (dayTime.substring(11).equals("12:00:00")) {
-                                    maxTemp = jsonObjectTemp.getString("temp_min");
-                                    Double longMax = Double.valueOf(maxTemp);
-                                    xMaxTemp = String.valueOf(longMax.intValue());
-                                    JSONArray jsonArrayWeather = object.getJSONArray("weather");
-                                    JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
-                                    status = jsonObjectWeather.getString("main");
-                                    icon = jsonObjectWeather.getString("icon");
-                                    weathers.add(new Weather(xDay, status, icon, xMinTemp, xMaxTemp));
-                                    Log.d("weathers", String.valueOf(weathers));
+                                long millis = System.currentTimeMillis();
+                                java.sql.Date currentDate = new java.sql.Date(millis);
+                                if (!currentDate.toString().equals(dayTime.substring(0, 10))) {
+                                    if (dayTime.substring(11).equals("00:00:00")) {
+                                        xDay = parseDate2(date);
+                                        minTemp = jsonObjectTemp.getString("temp_min");
+                                        Double longMin = Double.valueOf(minTemp);
+                                        xMinTemp = String.valueOf(longMin.intValue());
+                                    }
+                                    if (dayTime.substring(11).equals("12:00:00")) {
+                                        maxTemp = jsonObjectTemp.getString("temp_min");
+                                        Double longMax = Double.valueOf(maxTemp);
+                                        xMaxTemp = String.valueOf(longMax.intValue());
+                                        JSONArray jsonArrayWeather = object.getJSONArray("weather");
+                                        JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
+                                        status = jsonObjectWeather.getString("main");
+                                        icon = jsonObjectWeather.getString("icon");
+                                        weathers.add(new Weather(xDay, status, icon, xMinTemp, xMaxTemp));
+                                    }
+
+                                } else {
+                                    if (dayTime.substring(11).equals("00:00:00") && !currentDate.toString().equals(dayTime.substring(0, 10))) {
+                                        xDay = parseDate2(date);
+                                        minTemp = jsonObjectTemp.getString("temp_min");
+                                        Double longMin = Double.valueOf(minTemp);
+                                        xMinTemp = String.valueOf(longMin.intValue());
+                                    }
+                                    if (dayTime.substring(11).equals("12:00:00") && !currentDate.toString().equals(dayTime.substring(0, 10))) {
+                                        maxTemp = jsonObjectTemp.getString("temp_min");
+                                        Double longMax = Double.valueOf(maxTemp);
+                                        xMaxTemp = String.valueOf(longMax.intValue());
+                                        JSONArray jsonArrayWeather = object.getJSONArray("weather");
+                                        JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
+                                        status = jsonObjectWeather.getString("main");
+                                        icon = jsonObjectWeather.getString("icon");
+                                        weathers.add(new Weather(xDay, status, icon, xMinTemp, xMaxTemp));
+                                    }
+
                                 }
                             }
 
@@ -247,7 +269,7 @@ public class MainActivity extends AppCompatActivity {
             List<Address> addresses = geocoder.getFromLocation(lat, lng, 1);
             Address obj = addresses.get(0);
             String add = "";
-            add = obj.getAdminArea() + "," +obj.getCountryCode();
+            add = obj.getAdminArea() + "," + obj.getCountryCode();
 
             Log.v("IGA", "Address" + add);
             return add;
@@ -284,6 +306,7 @@ public class MainActivity extends AppCompatActivity {
                     .addOnSuccessListener(this, new OnSuccessListener<Location>() {
                         double latitude;
                         double longitude;
+
                         @Override
                         public void onSuccess(Location location) {
                             // Got last known location. In some rare situations this can be null.
@@ -292,7 +315,7 @@ public class MainActivity extends AppCompatActivity {
                                 latitude = location.getLatitude();
                                 longitude = location.getLongitude();
                                 getAddress(latitude, longitude);
-                                String city = getAddress(latitude, longitude).substring( 0, getAddress(latitude, longitude).indexOf(","));
+                                String city = getAddress(latitude, longitude).substring(0, getAddress(latitude, longitude).indexOf(","));
                                 getCurrentWeatherData(city);
                                 getNextFiveDaysWeatherData(getAddress(latitude, longitude));
                             }
