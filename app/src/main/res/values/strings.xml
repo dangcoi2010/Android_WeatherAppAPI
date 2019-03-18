@@ -1,5 +1,4 @@
 <resources>
-    <string name="app_name">Weather Forecast</string>
-    <string name="appwidget_text">EXAMPLE</string>
-    <string name="add_widget">Add widget</string>
+    <string name="app_name">Daily Forecast</string>
+    <string name="action_settings">Settings</string>
 </resources>

@@ -1,5 +1,4 @@
-package com.fptu.haidang.weatherapiapp;
-
+package com.fptu.haidang.weatherapplication.Activity;
 
 import android.Manifest;
 import android.content.DialogInterface;
@@ -10,16 +9,16 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.View;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.WindowManager;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -33,6 +32,10 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.fptu.haidang.weatherapplication.Adapter.CustomAdapter;
+import com.fptu.haidang.weatherapplication.Entity.API;
+import com.fptu.haidang.weatherapplication.Entity.Weather;
+import com.fptu.haidang.weatherapplication.R;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -42,10 +45,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,14 +61,12 @@ public class MainActivity extends AppCompatActivity {
     private TextView txtTemperature;
     private TextView txtStatus;
     private TextView txtHumidity, txtCloudy, txtWindy;
+    private TextView txtCurrentTime;
     private ImageView imgIcon;
     private ListView listView;
     private CustomAdapter customAdapter;
     private ArrayList<Weather> weathers;
-    private Button btnSearch;
-    private String preferentCity = "";
-    private AutoCompleteTextView editTextName;
-
+    private String preferentCity;
     private static int[] background = new int[]{
             R.drawable.clear_day,
             R.drawable.clear_day_2,
@@ -99,8 +97,8 @@ public class MainActivity extends AppCompatActivity {
             R.drawable.thunder_day_3,
             R.drawable.thunder_night,
             R.drawable.thunder_night_2};
-    private int statusId;
 
+    private int statusId;
     private java.util.Date dateNow = new java.util.Date();
     private String hourNow = dateNow.toString().substring(11, 13);
 
@@ -113,41 +111,7 @@ public class MainActivity extends AppCompatActivity {
     int[] thunderDay = Arrays.copyOfRange(background, background.length - 5, background.length - 2);
     int[] thunderNight = Arrays.copyOfRange(background, background.length - 2, background.length);
 
-    private List<String> locationHints = new ArrayList<>();
-
-    public List scanLocationFile() {
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new InputStreamReader(getAssets().open("locationList.txt"), "UTF-8"));
-
-            // do reading, usually loop until end of file reading
-            String mLine;
-            while ((mLine = reader.readLine()) != null) {
-//                mLine = mLine.substring(1, mLine.length() - 1);
-                locationHints.add(mLine);
-            }
-            return locationHints;
-        } catch (IOException e) {
-            System.out.println("searchHelping err" + e);
-            return null;
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    System.out.println("searchHelping finally err" + e);
-                }
-            }
-        }
-    }
-
-    public void locationHint() {
-        scanLocationFile();
-        System.out.println("locationHint location" + locationHints);
-        ArrayAdapter adapterCountries = new ArrayAdapter(this, android.R.layout.simple_list_item_1, locationHints);
-        editTextName.setAdapter(adapterCountries);
-        editTextName.setThreshold(2);
-    }
+    private Handler imageHandler = new Handler();
 
     public void getCurrentWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
@@ -164,13 +128,13 @@ public class MainActivity extends AppCompatActivity {
                             txtCity.setText(name + ",");
                             long l = Long.valueOf(day);
                             Date date = new Date(l * 1000L);
+                            txtCurrentTime.setText(parseDate(date));
 
                             JSONArray jsonArrayWeather = jsonObject.getJSONArray("weather");
                             JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
 
                             String status = jsonObjectWeather.getString("main");
                             statusId = jsonObjectWeather.getInt("id");
-                            System.out.println("AAAAAAAAAAAAAAAAAAAAAA" + statusId);
                             backgroundCollection(statusId);
                             String icon = jsonObjectWeather.getString("icon");
                             txtStatus.setText(status);
@@ -244,6 +208,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                                 JSONObject jsonObjectTemp = object.getJSONObject("main");
+
                                 long millis = System.currentTimeMillis();
                                 java.sql.Date currentDate = new java.sql.Date(millis);
                                 if (!currentDate.toString().equals(dayTime.substring(0, 10))) {
@@ -299,6 +264,111 @@ public class MainActivity extends AppCompatActivity {
         requestQueue.add(request);
     }
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+//        FloatingActionButton fab = findViewById(R.id.fab);
+//        fab.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+//                        .setAction("Action", null).show();
+//            }
+//        });
+        matchingViews();
+        getLocation();
+    }
+
+    protected void getLocation() {
+        int permission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)) {
+                AlertDialog.Builder builder =
+                        new AlertDialog.Builder(this);
+                builder.setMessage("Permission to access the location is required for this app.")
+                        .setTitle("Permission required");
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        requestPermission();
+                    }
+                });
+                AlertDialog dialog = builder.create();
+                dialog.show();
+            } else {
+                requestPermission();
+            }
+        } else {
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        double latitude;
+                        double longitude;
+                        @Override
+                        public void onSuccess(Location location) {
+                            // Got last known location. In some rare situations this can be null.
+                            if (location != null) {
+                                latitude = location.getLatitude();
+                                longitude = location.getLongitude();
+                                getAddress(latitude, longitude);
+                                String city = getAddress(latitude, longitude).substring(0, getAddress(latitude, longitude).indexOf(","));
+                                getCurrentWeatherData(city);
+                                getNextFiveDaysWeatherData(getAddress(latitude, longitude));
+                            }
+                        }
+                    });
+            getWindow().setSoftInputMode(WindowManager.
+                    LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        MenuItem actionMenuItem = menu.findItem(R.id.action_search);
+
+        SearchView searchView = (SearchView) actionMenuItem.getActionView();
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                Log.d("tp", query);
+                weathers.clear();
+                String city = query.trim();
+                preferentCity = (city.equals("") ? "Hanoi" : city);
+                getCurrentWeatherData(city);
+                getNextFiveDaysWeatherData(city);
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return true;
+            }
+        });
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            Intent myIntent = new Intent(getApplicationContext(), SettingsActivity.class);
+            startActivityForResult(myIntent, 0);
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
     public void randomBackground(int[] weather) {
         System.out.println("chay randomBackground");
         Random r = new Random();
@@ -307,7 +377,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void backgroundCollection(int status) {
-        System.out.println("chay bgcollection");
         switch (status) {
             // Thunderstorm
             case (200):
@@ -374,7 +443,6 @@ public class MainActivity extends AppCompatActivity {
             case (762):
             case (771):
             case (781):
-                System.out.println("vao day");
                 break;
             // Clear
             case (800):
@@ -389,6 +457,7 @@ public class MainActivity extends AppCompatActivity {
             case (804):
                 randomBackground(cloudyDay);
 //                imageHandler.post(handle);
+                System.out.println("vao day");
                 break;
         }
     }
@@ -396,15 +465,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void matchingViews() {
         txtCity = findViewById(R.id.txtCityName);
-        editTextName = findViewById(R.id.editTextName);
         txtCountry = findViewById(R.id.txtCountry);
         txtTemperature = findViewById(R.id.txtTemperature);
         txtStatus = findViewById(R.id.txtStatus);
         txtHumidity = findViewById(R.id.txtHumidity);
         txtCloudy = findViewById(R.id.txtCloudy);
         txtWindy = findViewById(R.id.txtWindy);
+        txtCurrentTime = findViewById(R.id.txtCurrentTime);
         imgIcon = findViewById(R.id.imgIcon);
-        btnSearch = findViewById(R.id.btnSearch);
         listView = findViewById(R.id.listView);
         weathers = new ArrayList<>();
         customAdapter = new CustomAdapter(MainActivity.this, weathers);
@@ -438,8 +506,6 @@ public class MainActivity extends AppCompatActivity {
     private FusedLocationProviderClient fusedLocationClient;
 
     public String getAddress(double lat, double lng) {
-        String currentLocation = "";
-
         Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.ENGLISH);
         try {
             List<Address> addresses = geocoder.getFromLocation(lat, lng, 1);
@@ -456,71 +522,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    protected void getLocation() {
-        int permission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
-        if (permission != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)) {
-                AlertDialog.Builder builder =
-                        new AlertDialog.Builder(this);
-                builder.setMessage("Permission to access the location is required for this app.").setTitle("Permission required");
-                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        requestPermission();
-                    }
-                });
-                AlertDialog dialog = builder.create();
-                dialog.show();
-            } else {
-                requestPermission();
-            }
-        } else {
-            setContentView(R.layout.activity_main);
-            matchingViews();
-            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-            fusedLocationClient.getLastLocation()
-                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                        double latitude;
-                        double longitude;
-
-                        @Override
-                        public void onSuccess(Location location) {
-                            // Got last known location. In some rare situations this can be null.
-                            if (location != null) {
-                                latitude = location.getLatitude();
-                                longitude = location.getLongitude();
-                                getAddress(latitude, longitude);
-                                String city = getAddress(latitude, longitude).substring(0, getAddress(latitude, longitude).indexOf(","));
-                                getCurrentWeatherData(city);
-                                getNextFiveDaysWeatherData(getAddress(latitude, longitude));
-                                locationHint();
-                            }
-                        }
-                    });
-            getWindow().setSoftInputMode(WindowManager.
-                    LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-        }
+    public String parseDate(Date date) {
+        String formattedDate = "";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEEE yyyy-MM-dd HH:mm:ss");
+        formattedDate = simpleDateFormat.format(date);
+        return formattedDate;
     }
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        getLocation();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-    }
-
-    public void onSearchButtonClicked(View view) {
-        weathers.clear();
-        String city = editTextName.getText().toString();
-        preferentCity = (city.equals("") ? "Hanoi" : city);
-        getCurrentWeatherData(city);
-        getNextFiveDaysWeatherData(city);
-    }
-
 
     public String parseDate2(Date date) {
         String formattedDate = "";
@@ -528,8 +535,4 @@ public class MainActivity extends AppCompatActivity {
         formattedDate = simpleDateFormat.format(date);
         return formattedDate;
     }
-<<<<<<< origin/DEV_Location
-
-=======
->>>>>>> local
 }

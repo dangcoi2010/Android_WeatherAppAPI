@@ -1,4 +1,4 @@
-package com.fptu.haidang.weatherapiapp;
+package com.fptu.haidang.weatherapplication.Entity;
 
 public class API {
     public String CURRENT_TEMP = "https://api.openweathermap.org/data/2.5/weather?q=";

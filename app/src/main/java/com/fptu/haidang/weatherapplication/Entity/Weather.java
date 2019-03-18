@@ -1,4 +1,4 @@
-package com.fptu.haidang.weatherapiapp;
+package com.fptu.haidang.weatherapplication.Entity;
 
 public class Weather {
     public String getDay() {
