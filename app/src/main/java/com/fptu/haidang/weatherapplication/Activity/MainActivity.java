@@ -1,9 +1,11 @@
 package com.fptu.haidang.weatherapplication.Activity;
 
 import android.Manifest;
+import android.app.SearchManager;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -18,9 +20,10 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.EditText;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -45,7 +48,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -97,11 +102,13 @@ public class MainActivity extends AppCompatActivity {
             R.drawable.thunder_day_3,
             R.drawable.thunder_night,
             R.drawable.thunder_night_2};
+    private SearchView searchView;
+
 
     private int statusId;
     private java.util.Date dateNow = new java.util.Date();
     private String hourNow = dateNow.toString().substring(11, 13);
-
+    private SearchView.SearchAutoComplete searchAutoComplete;
     int[] clearDay = Arrays.copyOfRange(background, 0, background.length - 25);
     int[] clearNight = Arrays.copyOfRange(background, background.length - 25, background.length - 21);
     int[] cloudyDay = Arrays.copyOfRange(background, background.length - 21, background.length - 15);
@@ -111,7 +118,41 @@ public class MainActivity extends AppCompatActivity {
     int[] thunderDay = Arrays.copyOfRange(background, background.length - 5, background.length - 2);
     int[] thunderNight = Arrays.copyOfRange(background, background.length - 2, background.length);
 
-    private Handler imageHandler = new Handler();
+    private List<String> locationHints = new ArrayList<>();
+    private ArrayAdapter<String> adapterCountries;
+
+    public List scanLocationFile() {
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new InputStreamReader(getAssets().open("locationList.txt"), "UTF-8"));
+
+            // do reading, usually loop until end of file reading
+            String mLine;
+            while ((mLine = reader.readLine()) != null) {
+//                mLine = mLine.substring(1, mLine.length() - 1);
+                locationHints.add(mLine);
+            }
+            return locationHints;
+        } catch (IOException e) {
+            System.out.println("searchHelping err" + e);
+            return null;
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    System.out.println("searchHelping finally err" + e);
+                }
+            }
+        }
+    }
+
+    public void locationHint() {
+        scanLocationFile();
+        System.out.println("locationHint location" + locationHints);
+        ArrayAdapter adapterCountries = new ArrayAdapter(this, android.R.layout.simple_list_item_1, locationHints);
+        searchAutoComplete.setAdapter(adapterCountries);
+    }
 
     public void getCurrentWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
@@ -268,18 +309,11 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-//        FloatingActionButton fab = findViewById(R.id.fab);
-//        fab.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                        .setAction("Action", null).show();
-//            }
-//        });
         matchingViews();
+        Toolbar toolbar = findViewById(R.id.toolbar);
         getLocation();
+        setSupportActionBar(toolbar);
+//        autoCompleteTextView = (AutoCompleteTextView)toolbar.findViewById(R.id.autoCompleteTextView);
     }
 
     protected void getLocation() {
@@ -307,6 +341,7 @@ public class MainActivity extends AppCompatActivity {
                     .addOnSuccessListener(this, new OnSuccessListener<Location>() {
                         double latitude;
                         double longitude;
+
                         @Override
                         public void onSuccess(Location location) {
                             // Got last known location. In some rare situations this can be null.
@@ -317,6 +352,7 @@ public class MainActivity extends AppCompatActivity {
                                 String city = getAddress(latitude, longitude).substring(0, getAddress(latitude, longitude).indexOf(","));
                                 getCurrentWeatherData(city);
                                 getNextFiveDaysWeatherData(getAddress(latitude, longitude));
+                                locationHint();
                             }
                         }
                     });
@@ -330,8 +366,30 @@ public class MainActivity extends AppCompatActivity {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         MenuItem actionMenuItem = menu.findItem(R.id.action_search);
+        searchView = (SearchView) actionMenuItem.getActionView();
+        searchAutoComplete = searchView.findViewById(android.support.v7.appcompat.R.id.search_src_text);
+        searchAutoComplete.setTextColor(Color.WHITE);
 
-        SearchView searchView = (SearchView) actionMenuItem.getActionView();
+        searchAutoComplete.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                /*for (int i = 0; i < parent.getChildCount(); i++) {
+                    parent.getChildAt(i).setBackgroundColor(Color.WHITE);
+                }*/
+                view.setBackgroundColor(Color.WHITE);
+
+                String searchString = (String) parent.getItemAtPosition(position);
+                searchAutoComplete.setText("" + searchString);
+                weathers.clear();
+                String city = searchAutoComplete.getText().toString();
+                preferentCity = (city.equals("") ? "Hanoi" : city);
+                getCurrentWeatherData(city);
+                getNextFiveDaysWeatherData(city);
+                searchView.clearFocus();
+            }
+        });
+        SearchManager searchManager = (SearchManager) getSystemService(this.SEARCH_SERVICE);
+        searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
