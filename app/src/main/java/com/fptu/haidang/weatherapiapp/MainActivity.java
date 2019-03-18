@@ -18,6 +18,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -40,7 +42,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,14 +61,13 @@ public class MainActivity extends AppCompatActivity {
     private TextView txtTemperature;
     private TextView txtStatus;
     private TextView txtHumidity, txtCloudy, txtWindy;
-    private TextView txtCurrentTime;
-    private EditText editTextName;
     private ImageView imgIcon;
     private ListView listView;
     private CustomAdapter customAdapter;
     private ArrayList<Weather> weathers;
     private Button btnSearch;
     private String preferentCity = "";
+    private AutoCompleteTextView editTextName;
 
     private static int[] background = new int[]{
             R.drawable.clear_day,
@@ -109,8 +113,41 @@ public class MainActivity extends AppCompatActivity {
     int[] thunderDay = Arrays.copyOfRange(background, background.length - 5, background.length - 2);
     int[] thunderNight = Arrays.copyOfRange(background, background.length - 2, background.length);
 
-    private Handler imageHandler = new Handler();
-    // imageHandler.post(handle);
+    private List<String> locationHints = new ArrayList<>();
+
+    public List scanLocationFile() {
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new InputStreamReader(getAssets().open("locationList.txt"), "UTF-8"));
+
+            // do reading, usually loop until end of file reading
+            String mLine;
+            while ((mLine = reader.readLine()) != null) {
+//                mLine = mLine.substring(1, mLine.length() - 1);
+                locationHints.add(mLine);
+            }
+            return locationHints;
+        } catch (IOException e) {
+            System.out.println("searchHelping err" + e);
+            return null;
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    System.out.println("searchHelping finally err" + e);
+                }
+            }
+        }
+    }
+
+    public void locationHint() {
+        scanLocationFile();
+        System.out.println("locationHint location" + locationHints);
+        ArrayAdapter adapterCountries = new ArrayAdapter(this, android.R.layout.simple_list_item_1, locationHints);
+        editTextName.setAdapter(adapterCountries);
+        editTextName.setThreshold(2);
+    }
 
     public void getCurrentWeatherData(String data) {
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
@@ -127,13 +164,13 @@ public class MainActivity extends AppCompatActivity {
                             txtCity.setText(name + ",");
                             long l = Long.valueOf(day);
                             Date date = new Date(l * 1000L);
-                            txtCurrentTime.setText(parseDate(date));
 
                             JSONArray jsonArrayWeather = jsonObject.getJSONArray("weather");
                             JSONObject jsonObjectWeather = jsonArrayWeather.getJSONObject(0);
 
                             String status = jsonObjectWeather.getString("main");
                             statusId = jsonObjectWeather.getInt("id");
+                            System.out.println("AAAAAAAAAAAAAAAAAAAAAA" + statusId);
                             backgroundCollection(statusId);
                             String icon = jsonObjectWeather.getString("icon");
                             txtStatus.setText(status);
@@ -207,7 +244,6 @@ public class MainActivity extends AppCompatActivity {
 
 
                                 JSONObject jsonObjectTemp = object.getJSONObject("main");
-
                                 long millis = System.currentTimeMillis();
                                 java.sql.Date currentDate = new java.sql.Date(millis);
                                 if (!currentDate.toString().equals(dayTime.substring(0, 10))) {
@@ -263,19 +299,6 @@ public class MainActivity extends AppCompatActivity {
         requestQueue.add(request);
     }
 
-    /*private final Runnable handle = new Runnable() {
-        public void run() {
-            try {
-                Random r = new Random();
-                int i = r.nextInt(mist.length);
-                MainActivity.this.getWindow().setBackgroundDrawableResource(mist[i]);
-                imageHandler.postDelayed(this, 5000);
-            } catch (Exception e) {
-                Log.d("Test", e.toString());
-            }
-        }
-    };*/
-
     public void randomBackground(int[] weather) {
         System.out.println("chay randomBackground");
         Random r = new Random();
@@ -284,6 +307,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void backgroundCollection(int status) {
+        System.out.println("chay bgcollection");
         switch (status) {
             // Thunderstorm
             case (200):
@@ -299,8 +323,8 @@ public class MainActivity extends AppCompatActivity {
                 if (Integer.parseInt(hourNow) <= 19) {
                     randomBackground(thunderDay);
                 } else randomBackground(thunderNight);
-                    break;
-                // Mist/Drizzle
+                break;
+            // Mist/Drizzle
             case (300):
             case (301):
             case (302):
@@ -350,21 +374,21 @@ public class MainActivity extends AppCompatActivity {
             case (762):
             case (771):
             case (781):
+                System.out.println("vao day");
                 break;
             // Clear
             case (800):
                 if (Integer.parseInt(hourNow) <= 19) {
                     randomBackground(clearDay);
                 } else randomBackground(clearNight);
-                    break;
-                // Cloudy
+                break;
+            // Cloudy
             case (801):
             case (802):
             case (803):
             case (804):
                 randomBackground(cloudyDay);
 //                imageHandler.post(handle);
-                System.out.println("vao day");
                 break;
         }
     }
@@ -372,15 +396,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void matchingViews() {
         txtCity = findViewById(R.id.txtCityName);
+        editTextName = findViewById(R.id.editTextName);
         txtCountry = findViewById(R.id.txtCountry);
         txtTemperature = findViewById(R.id.txtTemperature);
         txtStatus = findViewById(R.id.txtStatus);
         txtHumidity = findViewById(R.id.txtHumidity);
         txtCloudy = findViewById(R.id.txtCloudy);
         txtWindy = findViewById(R.id.txtWindy);
-        txtCurrentTime = findViewById(R.id.txtCurrentTime);
         imgIcon = findViewById(R.id.imgIcon);
-        editTextName = findViewById(R.id.editTextName);
         btnSearch = findViewById(R.id.btnSearch);
         listView = findViewById(R.id.listView);
         weathers = new ArrayList<>();
@@ -470,6 +493,7 @@ public class MainActivity extends AppCompatActivity {
                                 String city = getAddress(latitude, longitude).substring(0, getAddress(latitude, longitude).indexOf(","));
                                 getCurrentWeatherData(city);
                                 getNextFiveDaysWeatherData(getAddress(latitude, longitude));
+                                locationHint();
                             }
                         }
                     });
@@ -487,13 +511,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-    }
-
-    public String parseDate(Date date) {
-        String formattedDate = "";
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEEE yyyy-MM-dd HH:mm:ss");
-        formattedDate = simpleDateFormat.format(date);
-        return formattedDate;
     }
 
     public void onSearchButtonClicked(View view) {
