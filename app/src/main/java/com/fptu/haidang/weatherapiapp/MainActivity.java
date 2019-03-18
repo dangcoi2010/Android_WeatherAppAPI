@@ -528,5 +528,8 @@ public class MainActivity extends AppCompatActivity {
         formattedDate = simpleDateFormat.format(date);
         return formattedDate;
     }
+<<<<<<< origin/DEV_Location
 
+=======
+>>>>>>> local
 }

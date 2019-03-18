@@ -12,6 +12,7 @@
         android:roundIcon="@mipmap/appicon"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+<<<<<<< origin/DEV_Location
         <receiver android:name=".WeatherWidget">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -20,9 +21,11 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/weather_widget_info" />
-        </receiver>
+        </receiver><![CDATA[
 
-        <activity android:name=".Main2Activity" />
+        =======
+>>>>>>> local
+        ]]>
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
