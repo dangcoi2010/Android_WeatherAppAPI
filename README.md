@@ -1,4 +1,4 @@
-# AndroidFinal_WeatherAppAPI
+# Android_fuWeatherAppAPI
 ## Overview
 Daily weather forecast application
 Android platform
